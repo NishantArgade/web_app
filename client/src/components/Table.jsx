@@ -8,8 +8,10 @@ import {
 } from "@tanstack/react-table";
 import { MdMail } from "react-icons/md";
 import { MdLocalPhone } from "react-icons/md";
+import { useQuery } from "@tanstack/react-query";
 
 import { TbArrowsSort } from "react-icons/tb";
+import { getAllUsers } from "../api/authApi";
 
 const TableHeader = ({ header, name }) => {
   return (
@@ -78,7 +80,15 @@ const columns = [
 
   colHelper.accessor("status", {
     header: (header) => <TableHeader header={header} name={"Status"} />,
-    cell: (props) => <p className="mr-2">{props.getValue()}</p>,
+    cell: (props) => (
+      <p
+        className={`${
+          props.getValue() === "InPending" ? "text-green-600" : "text-blue-600"
+        } mr-2`}
+      >
+        {props.getValue()}
+      </p>
+    ),
   }),
 
   colHelper.accessor("assigned_RM", {
@@ -87,7 +97,7 @@ const columns = [
   }),
 ];
 
-const data = [
+const data2 = [
   {
     _id: "1",
     email: "nishant@gmail.com",
@@ -112,14 +122,25 @@ const Table = () => {
     sorting,
   };
 
+  const { data, isPending } = useQuery({
+    queryKey: ["allUsers"],
+    queryFn: getAllUsers,
+  });
+
+  console.log(data);
+
   const table = useReactTable({
-    data,
+    data: data?.users || [],
     columns,
     state,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
   });
+
+  if (isPending) return <p>Loading...</p>;
+
+  if (!data?.users || data?.users.length === 0) return <p>No Data</p>;
 
   return (
     <div>

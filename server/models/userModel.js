@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin", "operator"],
     default: "user",
   },
-  assigned_RM: String,
+  assigned_RM: { type: "String", default: "Nishant Argade" },
   password: String,
   created_at: {
     type: Date,

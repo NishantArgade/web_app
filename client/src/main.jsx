@@ -10,12 +10,12 @@ import { Toaster } from "react-hot-toast";
 export const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <MantineProvider>
+  <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <React.StrictMode>
+      <MantineProvider>
         <App />
         <Toaster />
-      </React.StrictMode>
+      </MantineProvider>
     </QueryClientProvider>
-  </MantineProvider>
+  </React.StrictMode>
 );

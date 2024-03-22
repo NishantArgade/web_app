@@ -1,9 +1,14 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PasswordInput, PinInput, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useMutation } from "@tanstack/react-query";
+import { signup } from "../api/authApi";
+import toast from "react-hot-toast";
+import { queryClient } from "../main";
 
 const Signup = () => {
+  const navigate = useNavigate();
   const form = useForm({
     initialValues: {
       name: "",
@@ -17,22 +22,44 @@ const Signup = () => {
 
     validate: {
       name: (value) =>
-        value.length > 3 ? null : "Name should be at least 3 characters",
-      email: (value) =>
-        /^\S+@\S+$/.test(value) ? null : "Invalid email address",
+        value.length >= 3 ? null : "Name should be at least 3 characters",
+      email: (value) => {
+        if (value.length === 0) return "Email is required";
+        else return /^\S+@\S+$/.test(value) ? null : "Invalid email address";
+      },
       phone: (value) =>
-        value.length > 10
+        value.length >= 10
           ? null
           : "Phone number should be at least 10 characters",
       password: (value) =>
-        value.length > 6 ? null : "Password should be at least 6 characters",
+        value.length >= 6 ? null : "Password should be at least 6 characters",
       confirmPassword: (value, values) =>
         value === values.password ? null : "Passwords do not match",
     },
   });
+  const { mutate: signUpMutate, isPending: signUpIsPending } = useMutation({
+    mutationKey: "signUp",
+    mutationFn: signup,
+    onSuccess: () => {
+      queryClient.invalidateQueries("checkAuth");
+      navigate("/");
+      form.reset();
+    },
+  });
 
   function handleSubmit(values) {
-    console.log(values);
+    const promise = new Promise((resolve, reject) => {
+      signUpMutate(values, {
+        onSuccess: () => resolve(),
+        onError: (err) => reject(err),
+      });
+    });
+
+    toast.promise(promise, {
+      loading: "Creating an account...",
+      success: "Sign up successful",
+      error: (err) => toast.error(err.response.data.message),
+    });
   }
   return (
     <div className="w-9/12 mx-auto">
@@ -84,6 +111,7 @@ const Signup = () => {
             type="button"
             className="text-sm font-semibold px-6 py-3 bg-blue-400 text-white rounded-sm shadow-md hover:bg-blue-500"
             onClick={form.onSubmit(handleSubmit)}
+            disabled={signUpIsPending}
           >
             Sign Up
           </button>

@@ -3,6 +3,7 @@ import { OTP } from "../models/otpModel.js";
 import { User } from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import { sendMail } from "../sendMail.js";
+import jwt from "jsonwebtoken";
 
 export async function login(req, res) {
   const { email, password, otp } = req.body;
@@ -59,7 +60,7 @@ export async function login(req, res) {
 
 export async function singup(req, res) {
   try {
-    const { email, password } = req.body;
+    const { name, email, phone, password } = req.body;
     const user = await User.findOne({ email });
     if (user) {
       return res.status(401).json({ message: "User already exists" });
@@ -69,10 +70,23 @@ export async function singup(req, res) {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = await User.create({
-      ...req.body,
+      name,
       email,
+      phone,
       password: hashedPassword,
     });
+
+    const token = generateToken(
+      newUser,
+      process.env.JWT_SECRET,
+      process.env.JWT_EXPIRY * 60
+    );
+
+    res.cookie(
+      "token",
+      token,
+      cookiesOption(process.env.JWT_EXPIRY * 60 * 1000)
+    );
 
     res.status(201).json({ message: "User created", data: newUser });
   } catch (err) {
@@ -100,19 +114,36 @@ export async function getAllUsers(req, res) {
 
 export async function checkAuth(req, res) {
   try {
-    const token = req.cookies.token;
-    const decode = jwt.verify(token, process.env.JWT_SECRET);
+    const token = req?.cookies?.token;
+    if (!token) {
+      return res
+        .status(401)
+        .json({ message: "Not authorized", isLoggedIn: false, user: {} });
+    }
+
+    const decode = await jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decode?.userID);
-    res.status(200).json({ message: "Authorized", user: req.user });
+    res
+      .status(200)
+      .json({ message: "Authorized", isLoggedIn: true, user: req.user });
   } catch (error) {
-    return res.status(401).json({ message: "Not authorized" });
+    return res
+      .status(401)
+      .json({ message: "Not authorized", isLoggedIn: false, user: {} });
   }
 }
 export async function sendOTP(req, res) {
   try {
     const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
     const otp = Math.floor(1000 + Math.random() * 9000);
     const otp_expiry = new Date(new Date().getTime() + 15 * 60 * 1000);
+
     await sendMail(email, otp);
     await OTP.findOneAndUpdate(
       { email },
@@ -125,6 +156,6 @@ export async function sendOTP(req, res) {
 
     res.status(200).json({ message: "OTP Sent" });
   } catch (error) {
-    return res.status(401).json({ message: "Could not sent otp" });
+    res.status(400).json({ message: "Could not sent otp" });
   }
 }
