@@ -2,7 +2,7 @@
 
 # Tech Stack:
 frontend -> react.js
-backend-> nest.js
+backend-> node.js
 database-> mongodb
 
 # Environment Variables for Frontend
